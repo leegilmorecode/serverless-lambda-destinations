@@ -2,7 +2,7 @@
 
 Basic example of lambda destinations with NodeJS and the serverless framework.
 
-I have discussed this feature in the following [blog post](/)
+I have discussed this feature in the following [blog post](https://leejamesgilmore.medium.com/serverless-lambda-destinations-146f8b3c3456)
 
 ## Overview
 
