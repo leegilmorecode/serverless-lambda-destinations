@@ -1,0 +1,98 @@
+service: serverless-lambda-destinations
+provider:
+  name: aws
+  runtime: nodejs12.x
+  lambdaHashingVersion: 20201221
+  memorySize: 128
+  stage: ${opt:stage, 'develop'}
+  region: eu-west-1
+  apiGateway:
+    shouldStartNameWithService: true
+package:
+  individually: true
+functions:
+  # lambda function invoked from sns topic async
+  # i.e. api gateway -> sns -> lambda
+  processPayment:
+    handler: src/process-payment.handler
+    maximumRetryAttempts: 0
+    maximumEventAge: 60
+    destinations:
+      onSuccess: ${self:custom.successArn}
+      onFailure: ${self:custom.failureArn}
+    events:
+      - sns:
+          arn: !Ref PaymentsTopic
+          topicName: PaymentsTopic
+  # a lambda reading from the success sqs queue to send email to the customer
+  notifyCustomer:
+    handler: src/notify-customer.handler
+    maximumRetryAttempts: 0
+    maximumEventAge: 60
+    events:
+      - sqs:
+          batchSize: 1 # in reality you would have your lambda batch process but setting to 1 for example
+          maximumBatchingWindow: 1
+          arn:
+            Fn::GetAtt:
+              - PaymentsNotification
+              - Arn
+  # a lambda reading from the sqs dlq to send email to the failed payments team
+  notifyPaymentsTeam:
+    handler: src/notify-payments-team.handler
+    maximumRetryAttempts: 0
+    maximumEventAge: 60
+    events:
+      - sqs:
+          batchSize: 1 # in reality you would have your lambda batch process but setting to 1 for example
+          maximumBatchingWindow: 1
+          arn:
+            Fn::GetAtt:
+              - PaymentsDLQ
+              - Arn
+custom:
+  successArn: arn:aws:sqs:${self:provider.region}:#{AWS::AccountId}:paymentsNotification
+  failureArn: arn:aws:sqs:${self:provider.region}:#{AWS::AccountId}:paymentsDLQ
+  apiGatewayServiceProxies:
+    - sns:
+        # payments endpoint in apig which will write directly to sns topic PaymentsTopic
+        path: /payments
+        method: post
+        topicName: PaymentsTopic
+        cors: true
+        response:
+          - statusCode: 200
+            responseParameters: {}
+            responseTemplates:
+              application/json: |-
+                { "message": "accepted" }
+          - statusCode: 400
+            responseParameters: {}
+            responseTemplates:
+              application/json: |-
+                { "message": "there is an error in your request" }
+          - statusCode: 500
+            responseParameters: {}
+            responseTemplates:
+              application/json: |-
+                { "message": "there was an error handling your request" }
+resources:
+  Resources:
+    # creation of the payments topic (sns)
+    PaymentsTopic:
+      Type: AWS::SNS::Topic
+      Properties:
+        TopicName: PaymentsTopic
+    # creation of the payments processing sqs dlq (dead letter queue)
+    PaymentsDLQ:
+      Type: AWS::SQS::Queue
+      Properties:
+        QueueName: paymentsDLQ
+    # creation of the payments notifications queue for successful processing
+    PaymentsNotification:
+      Type: AWS::SQS::Queue
+      Properties:
+        QueueName: paymentsNotification
+plugins:
+  - serverless-apigateway-service-proxy
+  - serverless-pseudo-parameters

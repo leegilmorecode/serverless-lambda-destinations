@@ -1,0 +1,27 @@
+{
+  "name": "serverless-lambda-destinations",
+  "version": "1.0.0",
+  "description": "An example repo for serverless lambda destinations",
+  "main": "index.js",
+  "scripts": {
+    "deploy:develop": "SLS_DEBUG=* sls deploy --stage=develop --verbose",
+    "prettier": "npx prettier --write ."
+  },
+  "devDependencies": {
+    "eslint": "^7.29.0",
+    "prettier": "2.3.2",
+    "serverless": "^2.51.0",
+    "serverless-apigateway-service-proxy": "^1.14.0",
+    "serverless-pseudo-parameters": "^2.5.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/leegilmorecode/serverless-lambda-destinations.git"
+  },
+  "author": "Lee Gilmore",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/leegilmorecode/serverless-lambda-destinations/issues"
+  },
+  "homepage": "https://github.com/leegilmorecode/serverless-lambda-destinations#readme"
+}
